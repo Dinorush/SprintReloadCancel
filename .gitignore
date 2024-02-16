@@ -1,0 +1,6 @@
+.vs/*
+*.vs
+SprintReloadCancel/bin/*
+SprintReloadCancel/lib/*
+SprintReloadCancel/obj/*
+/SprintReloadCancel/GameFolder.props
