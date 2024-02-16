@@ -9,6 +9,7 @@ namespace SprintReloadCancel
     {
         public static bool sprintCancelEnabled = true;
         public static bool aimCancelEnabled = false;
+        public static bool shootCancelEnabled = false;
 
         private static ConfigFile configFile;
 
@@ -25,12 +26,14 @@ namespace SprintReloadCancel
             configFile.Reload();
             sprintCancelEnabled = (bool)configFile["Base Settings", "Sprint to Reload Cancel"].BoxedValue;
             aimCancelEnabled = (bool)configFile["Base Settings", "Aim to Reload Cancel"].BoxedValue;
+            shootCancelEnabled = (bool)configFile["Base Settings", "Shoot to Reload Cancel"].BoxedValue;
         }
 
         private static void BindAll(ConfigFile config)
         {
             sprintCancelEnabled = config.Bind("Base Settings", "Sprint to Reload Cancel", sprintCancelEnabled, "Sprinting will cancel reloads.").Value;
             aimCancelEnabled = config.Bind("Base Settings", "Aim to Reload Cancel", aimCancelEnabled, "Aiming will cancel reloads.").Value;
+            shootCancelEnabled = config.Bind("Base Settings", "Shoot to Reload Cancel", shootCancelEnabled, "Shooting will cancel reloads.").Value;
         }
     }
 }
