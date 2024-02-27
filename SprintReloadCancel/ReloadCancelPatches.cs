@@ -9,6 +9,16 @@ namespace SprintReloadCancel
 {
     internal static class ReloadCancelPatches
     {
+        private const float SWAP_TIME = 0.2f;
+        private static readonly System.Collections.Generic.Dictionary<InputAction, InventorySlot> SWAP_ACTIONS = new() {
+            { InputAction.SelectStandard, InventorySlot.GearStandard },
+            { InputAction.SelectSpecial, InventorySlot.GearSpecial },
+            { InputAction.SelectTool, InventorySlot.GearClass },
+            { InputAction.SelectMelee, InventorySlot.GearMelee },
+            { InputAction.SelectConsumable, InventorySlot.Consumable },
+            { InputAction.SelectHackingTool, InventorySlot.HackingTool },
+            { InputAction.SelectResourcePack, InventorySlot.ResourcePack },
+        };
         private static float reloadEndTime = 0;
 
         [HarmonyPatch(typeof(PLOC_Stand), nameof(PLOC_Stand.Update))]
@@ -74,8 +84,8 @@ namespace SprintReloadCancel
 
         private static bool ShouldCancel(PlayerAgent owner)
         {
-            return (Configuration.sprintCancelEnabled && InputMapper.GetButtonDown.Invoke(InputAction.Run, owner.InputFilter))
-                || (reloadEndTime - 0.2f > Clock.Time && ( // Avoid canceling reloads that are almost done (e.g. spamming shoot as it finishes)
+            return (Configuration.sprintCancelEnabled && InputMapper.GetButtonDown.Invoke(InputAction.Run, owner.InputFilter) && owner.Locomotion.InputIsForwardEnoughForRun())
+                || (reloadEndTime - SWAP_TIME > Clock.Time && ( // Avoid canceling reloads that are almost done (e.g. spamming shoot as it finishes)
                       (Configuration.aimCancelEnabled && InputMapper.GetButtonDown.Invoke(InputAction.Aim, owner.InputFilter))
                    || (Configuration.shootCancelEnabled && InputMapper.GetButtonDown.Invoke(InputAction.Fire, owner.InputFilter))
                    ));
@@ -85,6 +95,42 @@ namespace SprintReloadCancel
         {
             yield return null;
             owner?.Sync.WantsToWieldSlot(slot);
+
+            if (Configuration.swapBuffer)
+                CoroutineManager.StartCoroutine(CollectionExtensions.WrapToIl2Cpp(SwapBuffer(owner)));
+        }
+
+        private static IEnumerator SwapBuffer(PlayerAgent? owner)
+        {
+            // Buffer mechanic. Wait until the buffer time is long enough to actually catch swaps
+            float endTime = Clock.Time + SWAP_TIME;
+            InventorySlot bufferedSlot = InventorySlot.None;
+            bool bufferedPush = false;
+            // Check for swap attempts until we can swap again
+            while(Clock.Time < endTime && owner != null)
+            {
+                foreach (var pair in SWAP_ACTIONS)
+                {
+                    if (InputMapper.GetButtonDown.Invoke(pair.Key, owner.InputFilter))
+                    {
+                        bufferedSlot = pair.Value;
+                        bufferedPush = false;
+                    }
+                }
+                    
+                if (InputMapper.GetButtonDown.Invoke(InputAction.Melee, owner.InputFilter))
+                    bufferedPush = true;
+
+                yield return null;
+            }
+
+            if (owner != null && owner.FPItemHolder.m_inventoryLocal.WieldedSlot != InventorySlot.InLevelCarry)
+            {
+                if (bufferedPush)
+                    owner.FPItemHolder.MeleeAttackShortcut();
+                else if (bufferedSlot != InventorySlot.None)
+                    owner.Sync.WantsToWieldSlot(bufferedSlot);
+            }
         }
     }
 }

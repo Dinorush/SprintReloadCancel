@@ -10,6 +10,7 @@ namespace SprintReloadCancel
         public static bool sprintCancelEnabled = true;
         public static bool aimCancelEnabled = false;
         public static bool shootCancelEnabled = false;
+        public static bool swapBuffer = true;
 
         private static ConfigFile configFile;
 
@@ -27,6 +28,7 @@ namespace SprintReloadCancel
             sprintCancelEnabled = (bool)configFile["Base Settings", "Sprint to Reload Cancel"].BoxedValue;
             aimCancelEnabled = (bool)configFile["Base Settings", "Aim to Reload Cancel"].BoxedValue;
             shootCancelEnabled = (bool)configFile["Base Settings", "Shoot to Reload Cancel"].BoxedValue;
+            swapBuffer = (bool)configFile["Base Settings", "Reload Cancel Swap Buffer"].BoxedValue;
         }
 
         private static void BindAll(ConfigFile config)
@@ -34,6 +36,7 @@ namespace SprintReloadCancel
             sprintCancelEnabled = config.Bind("Base Settings", "Sprint to Reload Cancel", sprintCancelEnabled, "Sprinting will cancel reloads.").Value;
             aimCancelEnabled = config.Bind("Base Settings", "Aim to Reload Cancel", aimCancelEnabled, "Aiming will cancel reloads.").Value;
             shootCancelEnabled = config.Bind("Base Settings", "Shoot to Reload Cancel", shootCancelEnabled, "Shooting will cancel reloads.").Value;
+            swapBuffer = config.Bind("Base Settings", "Reload Cancel Swap Buffer", swapBuffer, "After a reload cancel, buffers swap inputs until the next possible time.\nThis can mitigate missed inputs when you attempt to swap weapons right after reload canceling.").Value;
         }
     }
 }
