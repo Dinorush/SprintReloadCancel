@@ -9,8 +9,8 @@ namespace SprintReloadCancel
 {
     internal static class ReloadCancelPatches
     {
-        private const float SWAP_TIME = 0.2f;
-        private static readonly System.Collections.Generic.Dictionary<InputAction, InventorySlot> SWAP_ACTIONS = new() {
+        private const float SwapTime = 0.2f;
+        private static readonly System.Collections.Generic.Dictionary<InputAction, InventorySlot> SwapActions = new() {
             { InputAction.SelectStandard, InventorySlot.GearStandard },
             { InputAction.SelectSpecial, InventorySlot.GearSpecial },
             { InputAction.SelectTool, InventorySlot.GearClass },
@@ -19,28 +19,15 @@ namespace SprintReloadCancel
             { InputAction.SelectHackingTool, InventorySlot.HackingTool },
             { InputAction.SelectResourcePack, InventorySlot.ResourcePack },
         };
-        private static float reloadEndTime = 0;
+        private static float _reloadEndTime = 0;
+        private static bool _aimWasDown = false;
 
         [HarmonyPatch(typeof(PLOC_Stand), nameof(PLOC_Stand.Update))]
-        [HarmonyWrapSafe]
-        [HarmonyPrefix]
-        private static void ReloadCancelStand(PLOC_Stand __instance)
-        {
-            AttemptReloadCancel(__instance);
-        }
-
         [HarmonyPatch(typeof(PLOC_Crouch), nameof(PLOC_Crouch.Update))]
-        [HarmonyWrapSafe]
-        [HarmonyPrefix]
-        private static void ReloadCancelCrouch(PLOC_Crouch __instance)
-        {
-            AttemptReloadCancel(__instance);
-        }
-
         [HarmonyPatch(typeof(PLOC_Jump), nameof(PLOC_Jump.Update))]
         [HarmonyWrapSafe]
         [HarmonyPrefix]
-        private static void ReloadCancelJump(PLOC_Jump __instance)
+        private static void ReloadCancelStand(PLOC_Stand __instance)
         {
             AttemptReloadCancel(__instance);
         }
@@ -65,7 +52,7 @@ namespace SprintReloadCancel
                 if (item.TriggerTime > largest)
                     largest = item.TriggerTime;
             }
-            reloadEndTime = Clock.Time + largest * timeScale;
+            _reloadEndTime = Clock.Time + largest * timeScale;
         }
 
         private static void AttemptReloadCancel(PLOC_Base ploc)
@@ -84,9 +71,13 @@ namespace SprintReloadCancel
 
         private static bool ShouldCancel(PlayerAgent owner)
         {
+            bool aimDown = InputMapper.GetButton.Invoke(InputAction.Aim, owner.InputFilter);
+            bool aimResult = aimDown && !_aimWasDown;
+            _aimWasDown = aimDown;
+
             return (Configuration.sprintCancelEnabled && InputMapper.GetButtonDown.Invoke(InputAction.Run, owner.InputFilter) && owner.Locomotion.InputIsForwardEnoughForRun())
-                || (reloadEndTime - SWAP_TIME > Clock.Time && ( // Avoid canceling reloads that are almost done (e.g. spamming shoot as it finishes)
-                      (Configuration.aimCancelEnabled && InputMapper.GetButtonDown.Invoke(InputAction.Aim, owner.InputFilter))
+                || (_reloadEndTime - SwapTime > Clock.Time && ( // Avoid canceling reloads that are almost done (e.g. spamming shoot as it finishes)
+                      (Configuration.aimCancelEnabled && aimResult)
                    || (Configuration.shootCancelEnabled && InputMapper.GetButtonDown.Invoke(InputAction.Fire, owner.InputFilter))
                    ));
         }
@@ -103,13 +94,13 @@ namespace SprintReloadCancel
         private static IEnumerator SwapBuffer(PlayerAgent? owner)
         {
             // Buffer mechanic. Wait until the buffer time is long enough to actually catch swaps
-            float endTime = Clock.Time + SWAP_TIME;
+            float endTime = Clock.Time + SwapTime;
             InventorySlot bufferedSlot = InventorySlot.None;
             bool bufferedPush = false;
             // Check for swap attempts until we can swap again
             while(Clock.Time < endTime && owner != null)
             {
-                foreach (var pair in SWAP_ACTIONS)
+                foreach (var pair in SwapActions)
                 {
                     if (InputMapper.GetButtonDown.Invoke(pair.Key, owner.InputFilter))
                     {
