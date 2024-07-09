@@ -61,7 +61,10 @@ namespace SprintReloadCancel
             if (!owner.IsLocallyOwned)
                 return;
 
-            if ((!owner.FPItemHolder?.WieldedItem?.IsReloading ?? true) || !ShouldCancel(owner))
+            bool aimDown = InputMapper.GetButton.Invoke(InputAction.Aim, owner.InputFilter);
+            bool aimResult = aimDown && !_aimWasDown;
+            _aimWasDown = aimDown;
+            if ((!owner.FPItemHolder?.WieldedItem?.IsReloading ?? true) || !ShouldCancel(owner, aimResult))
                 return;
             
             InventorySlot slot = owner.FPItemHolder.m_inventoryLocal.WieldedSlot;
@@ -69,15 +72,11 @@ namespace SprintReloadCancel
             CoroutineManager.StartCoroutine(CollectionExtensions.WrapToIl2Cpp(SwapBack(owner, slot)));
         }
 
-        private static bool ShouldCancel(PlayerAgent owner)
+        private static bool ShouldCancel(PlayerAgent owner, bool aimDown)
         {
-            bool aimDown = InputMapper.GetButton.Invoke(InputAction.Aim, owner.InputFilter);
-            bool aimResult = aimDown && !_aimWasDown;
-            _aimWasDown = aimDown;
-
             return (Configuration.sprintCancelEnabled && InputMapper.GetButtonDown.Invoke(InputAction.Run, owner.InputFilter) && owner.Locomotion.InputIsForwardEnoughForRun())
                 || (_reloadEndTime - SwapTime > Clock.Time && ( // Avoid canceling reloads that are almost done (e.g. spamming shoot as it finishes)
-                      (Configuration.aimCancelEnabled && aimResult)
+                      (Configuration.aimCancelEnabled && aimDown)
                    || (Configuration.shootCancelEnabled && InputMapper.GetButtonDown.Invoke(InputAction.Fire, owner.InputFilter))
                    ));
         }
