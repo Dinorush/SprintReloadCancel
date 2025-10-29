@@ -25,6 +25,7 @@ namespace SprintReloadCancel
         [HarmonyPatch(typeof(PLOC_Stand), nameof(PLOC_Stand.Update))]
         [HarmonyPatch(typeof(PLOC_Crouch), nameof(PLOC_Crouch.Update))]
         [HarmonyPatch(typeof(PLOC_Jump), nameof(PLOC_Jump.Update))]
+        [HarmonyPatch(typeof(PLOC_Fall), nameof(PLOC_Fall.Update))]
         [HarmonyWrapSafe]
         [HarmonyPrefix]
         private static void ReloadCancelStand(PLOC_Stand __instance)
